@@ -1,4 +1,4 @@
-const cloudinary = require('cloudinary').v1;
+const cloudinary = require('cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
 //joining our backend with our cloudinary account
