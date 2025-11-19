@@ -51,17 +51,17 @@ app.use(methodOverride('_method'));
 const store = MongoStore.create({
     mongoUrl : dbUrl,
     crypto: {
-        secret: process.env.SECCRET,
+        secret: process.env.SECRET,
     },
     touchAfter: 24 * 3600,
 });
-store.on("error" ,() => {
+store.on("error" ,(err) => {
     console.log("ERROR in MONGO SESSION STORE",err);
 });
 
 const sessionOptions = {
     store,
-    secret : process.env.SECCRET,
+    secret : process.env.SECRET,
     
     resave : false,
     saveUninitialized : true,
@@ -76,10 +76,11 @@ const sessionOptions = {
 
 app.use(session(sessionOptions));
 app.use(flash()); //flash is used after session and before routes 52 53
-
  //passport is used after session
 app.use(passport.initialize());  //a MW that initializes passport
 app.use(passport.session()); // a webapplication needs the ability to identify users as they interact with the app across multiple requests
+
+
 passport.use(new LocalStrategy(User.authenticate())); //tells passport to use local strategy for authentication using username and password
 passport.serializeUser(User.serializeUser()); //how to store a user in the session
 passport.deserializeUser(User.deserializeUser()); //how to delete or remove a user from the session
@@ -87,23 +88,25 @@ passport.deserializeUser(User.deserializeUser()); //how to delete or remove a us
 app.use((req, res, next) => {
     res.locals.success = req.flash('success');
     res.locals.error = req.flash('error');
-    res.locals.currentUser = req.user; //to access the current logged in user in all ejs files
+    res.locals.currentUser = req.user || null; //to access the current logged in user in all ejs files
     next();
 });
 
-//demo user route to create a user
-app.get("/demouser" , async (req, res) => {
-    const fakeUser = new User({
-        email:"abcd@gmail.com",
-        username:"abcd"
-    });
-    let registeredUser = await User.register(fakeUser , "abcd1234" )
-    res.send(registeredUser);
-});
-    
 app.use('/listings', listingRouter); // Use the listings routes
 app.use('/listings/:id/reviews', reviewRouter); // Use the reviews routes
 app.use('/', userRouter); // Use the user routes 
+
+//demo user route to create a user
+// app.get("/demouser" , async (req, res) => {
+//     const fakeUser = new User({
+//         email:"abcd@gmail.com",
+//         username:"abcd"
+//     });
+//     let registeredUser = await User.register(fakeUser , "abcd1234" )
+//     res.send(registeredUser);
+// });
+    
+
 
 
 app.use((req, res, next) => {
@@ -111,11 +114,18 @@ app.use((req, res, next) => {
 });
 
 // Error handling middleware
+// app.use((err, req, res, next) => { 
+//     let { statusCode = 500, message = 'Something went wrong' } = err;
+//     res.status(statuscode).render("listings/error", {err});
+//     // res.status(statuscode).send(message);
+// });
 app.use((err, req, res, next) => { 
-    let { statuscode = 500, message = 'Something went wrong' } = err;
-    res.status(statuscode).render("listings/error", {err});
-    // res.status(statuscode).send(message);
+    let { statusCode = 500 } = err;
+    if (!err.message) err.message = "Something went wrong";
+
+    res.status(statusCode).render("listings/error", { err });
 });
+
 
 // Start the server
 app.listen(8080, () => {
